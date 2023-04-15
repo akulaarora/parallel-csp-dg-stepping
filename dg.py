@@ -1,183 +1,150 @@
 import math
+from collections import defaultdict
+import numpy as np
 import networkx as nx
+from networkx.algorithms.simple_paths import all_simple_paths
+
+def get_route_edge_attributes(
+    G, route, attribute=None, minimize_key="cost", retrieve_default=None
+):
+    attribute_values = []
+    for u, v in zip(route[:-1], route[1:]):
+        # if there are parallel edges between two nodes, select the one with the
+        # lowest value of minimize_key
+        data = min(G.get_edge_data(u, v).values(), key=lambda x: x[minimize_key])
+        if attribute is None:
+            attribute_value = data
+        elif retrieve_default is not None:
+            attribute_value = data.get(attribute, retrieve_default(u, v))
+        else:
+            attribute_value = data[attribute]
+        attribute_values.append(attribute_value)
+    return attribute_values
+
+class Graph:
+    def __init__(self, MG):
+        self.MG = MG
+        self.nodes = {i+1: node for i, node in enumerate(MG.nodes)}
+        print(self.nodes)
+        self.inv_nodes = {v: k for k, v in self.nodes.items()}
+ 
+    def neighbors(self, node):
+        node_inv = self.nodes[node]
+        neighbors_inv = list(self.MG.neighbors(self.nodes[node]))
+        neighbors = [self.inv_nodes[neighbor] for neighbor in neighbors_inv]
+        ret = []
+        for i, neighbor_inv in enumerate(neighbors_inv):
+            vals = get_route_edge_attributes(self.MG, [node_inv, neighbor_inv])[0]
+            ret.append((neighbors[i], vals['cost'], vals['weight']))
+        return ret
 
 class Algorithm:
-    def __init__(self):
-        self.distances = {}
-        self.delta = 5
-        self.gamma = 5
-        self.property_map = {}
-        self.source_vertex = 2
-        self.infinity = float("inf")
-        self.B = {}
-        self.W = 0
-        self.L = 0
+    def __init__(self, Delta, Gamma):
+        self.Delta = Delta
+        self.Gamma = Gamma
 
-        self.A = {}
+    def relax(self, B, A, ali, i_prime, W, L):
+        pi, c, w = ali
+        pi_new, c_new, w_new = pi + (i_prime[0],), c + i_prime[1], w + i_prime[2]
 
-    def relax(self, a, i_dest, g):
-        '''
-        a^l_i is a label on node i
-        i_dest is the destination node
-        '''
-        # TODO
-        c_new = a[1] + g.get_edge_data(a[0], i_dest)['cost']
-        w_new = a[2] + g.get_edge_data(a[0], i_dest)['weight']
-        a_new = (i_dest, )
-
-        if w_new <= self.W and c_new <= self.L:
-            updated = False
-            to_remove = []
-            for a_prime in self.B[w]:
-                if x > a_prime:
-                    updated = True
-                elif x < a_prime:
-                    to_remove.append(a_prime)
-
-            if updated:
-                self.B[w].add(x)
-
-                for a in to_remove:
-                    self.B[w].remove(a)
-
-    def find_requests(self, vertices, kind, g):
-        """
-        returns a dictionary of neighboring edges with their weights but according to the kind i.e. light or heavy
-
-        :param vertices:
-        :param kind:
-        :param g:
-        :return:
-        """
-
-        tmp = {}
-        # print("vertices=", vertices, "kind=", kind)
-        for u in vertices:
-            for v in g.neighbors(u):
-                # print(u, self.property_map[u], g.get_edge_data(u, v)['weight'])
-                edge_weight = self.property_map[u] + g.get_edge_data(u, v)['weight']
-                if kind == 'light':
-                    if g.get_edge_data(u, v)['weight'] <= self.delta:
-                        if v in tmp:
-                            if edge_weight < tmp[v]:
-                                tmp[v] = edge_weight
-                        else:
-                            tmp[v] = edge_weight
-                elif kind == 'heavy':
-                    if g.get_edge_data(u, v)['weight'] > self.delta:
-                        if v in tmp:
-                            if edge_weight < tmp[v]:
-                                tmp[v] = edge_weight
-                        else:
-                            tmp[v] = edge_weight
-                else:
-                    return "Error: No such kind of edges " + kind
-        # print("tmp=", tmp)
-        return tmp
-
-    def find_requests(self, u, kind, g):
-        # u is the vertex
-        tmp = {}
-        for v in g.neighbors(u):
-            edge_cost = g.get_edge_data(u, v)['cost']
-            edge_weight = g.get_edge_data(u, v)['weight']
-            edge_value = (v, self.property_map[u][0] + edge_cost, self.property_map[u][1] + edge_weight)
-
-            # TODO not sure about light being below edge cost/weight
-            if kind == 'light' and edge_cost <= self.delta and edge_weight <= self.gamma:
-                if v in tmp:
-                    if edge_value < tmp[v]:
-                        tmp[v] = edge_value
-                else:
-                    tmp[v] = edge_value
-            elif kind == 'heavy':
-                if v in tmp:
-                    if edge_value < tmp[v]:
-                        tmp[v] = edge_value
-                else:
-                    tmp[v] = edge_value
-            else:
-                return "Error: No such kind of edges " + kind
-        return tmp
-
-    def relax_requests(self, request):
-        for key, value in request.items():
-            self.relax(key, value)
-
-    def min_lex(self, B):
-        for i in range(math.ceil(self.W / self.delta)):
-            for j in range(math.ceil(self.L / self.gamma)):
-                if B[i][j]:
-                    return (i, j)
-        return None
-
-    def delta_gamma_stepping(self, g, W, L):
-        self.W = W
-        self.L = L
-
-        for node in g.nodes():
-            self.A[node] = set()
-        self.A[self.source_vertex].add((self.source_vertex, 0, 0)) # TODO
-
-        for i in range(math.ceil(W / self.delta)):
-            self.B[i] = {}
-            for j in range(math.ceil(L / self.gamma)):
-                self.B[i][j] = set()
-        self.B[1][1].add((self.source_vertex, 0, 0))
-
-        while True:
-            min_lex = self.min_lex(self.B)
-            if min_lex is None:
+        is_dominated=False
+        for a in A[i_prime[0]]:
+            if a[1] < c_new and a[2] <= w_new:
+                is_dominated = True
                 break
-
-            R = {}
-            
-            Bjk = self.B[min_lex[0]][min_lex[1]]
-            while len(self.B[min_lex[0]][min_lex[1]]) > 0:
-                R = {**R, **self.B[min_lex[0][min_lex[1]]]}
-                tmp = dict(Bjk)
-                self.B[min_lex[0]][min_lex[1]] = {}
                 
-                for a in tmp:
-                    self.relax(a[0], (a[1], a[2]))
+        if w_new <= W and c_new <= L and not is_dominated:
+            A[i_prime[0]].add((pi_new, c_new, w_new))
+            B[math.ceil(c_new / L)][math.ceil(w_new / W)].add((pi_new, c_new, w_new))
 
-                for 
+        
+        for a in A[i_prime[0]]:
+            if c_new < a[1] and w_new <= a[2]:
+                A[i_prime[0]].remove(a)
+                B[math.ceil[a[1] / L][math.ceil[a[2] / W]]].remove(a)
 
-                u, c, w = self.B[min_lex[0]][min_lex[1]].pop()
-                R.add(u)
-                for v in g.neighbors(u):
-                    edge_cost = g.get_edge_data(u, v)['cost']
-                    edge_weight = g.get_edge_data(u, v)['weight']
-                    if w + edge_weight <= W and c + edge_cost <= L:
-                        self.B[math.ceil((w + edge_weight) / self.delta)][math.ceil((c + edge_cost) / self.gamma)].add((v, c + edge_cost, w + edge_weight))
+    def sequential_delta_gamma_stepping(self, MG, W, L, start, end):
+        G = Graph(MG)
+        start = G.inv_nodes[start]
+        end = G.inv_nodes[end]
+        A = defaultdict(set)
+        B = defaultdict(lambda: defaultdict(set))
 
-        while any(self.B[node] for node in g.nodes()):
-            r = set()
-            while True:
-                b = {node: min(self.B[node]) for node in g.nodes() if self.B[node]}
-                if not b:
-                    break
+        A[1].add(((start,), 0, 0))
+        B[1][1].add(((start,), 0, 0))
 
-                i = min(b, key=b.get)
-                x = b[i]
+        while any(B[j][k] for j in range(1, math.ceil(L/self.Delta) + 1) for k in range(1, math.ceil(W/self.Gamma) + 1)):
+            j, k = min((j, k) for j in range(1, math.ceil(L/self.Delta) + 1) for k in range(1, math.ceil(W/self.Gamma) + 1) if B[j][k])
 
-                self.B[i].remove(x)
-                r.add(i)
-                req = self.find_requests({i}, 'light', g)
-                self.relax_requests(req)
+            R = set()
+            while B[j][k]:
+                R |= B[j][k]
+                tmp = B[j][k]
+                B[j][k] = set()
 
-            req = self.find_requests(r, 'heavy', g)
-            self.relax_requests(req)
+                for ali in tmp:
+                    i = ali[0][-1] # TODO
+                    for i_prime in G.neighbors(i):
+                        if i_prime[1] < self.Delta and i_prime[2] < self.Gamma:
+                            self.relax(B, A, ali, i_prime, W, L)
+
+            for ali in R:
+                i = ali[0][-1] # TODO
+                for i_prime in G.neighbors(i):
+                    if i_prime[1] >= self.Delta or i_prime[2] >= self.Gamma:
+                        self.relax(B, A, ali, i_prime, W, L)
+
+        if not A[end]:
+            return [], float('inf'), float('inf')
+        else:
+            return min(A[end], key=lambda x: x[1])
 
 
-    def validate(self, g, target_algorithm):
-        # TODO
-        pass
-        # self.property_map = {k: v for k, v in self.property_map.items() if v != (self.infinity, self.infinity)}
-        # valid = True
+def validate(MG):
+    shortest_paths_constrained = []
+    for path in all_simple_paths(MG, "A", "G"):
+        if sum(get_route_edge_attributes(MG, path, 'weight')) < 300:
+            path_cost = sum(get_route_edge_attributes(MG, path, 'cost'))
+            result = (path, path_cost)
+            if not shortest_paths_constrained:
+                shortest_paths_constrained.append(result)
+            elif path_cost == shortest_paths_constrained[0][1]:
+                shortest_paths_constrained.append(result)
+            elif path_cost < shortest_paths_constrained[0][1]:
+                shortest_paths_constrained = [result]
 
-        # for node in g.nodes():
-        #     if target_algorithm(self.property_map[node]) != target_algorithm(self.distances[node]):
-        #         print("Error: The algorithm is faulty!")
-        #         print("vertex ", node, " value in ground truth is ", self.distances[node], " and value in delta-gamma stepping is ", self.property
+    return shortest_paths_constrained
 
+def main():
+    # 1. Define test network 
+    MG = nx.MultiDiGraph()
+    MG.add_edges_from([("B", "A", {"cost": 0.8}), ("A", "B", {"cost": 1.}), ("D", "G", {"cost": 3.5}),
+                    ("B", "D", {"cost": 20.8}), ("A", "C", {"cost": 9.7}), ("D", "C", {"cost": 0.3}),
+                    ("B", "E", {"cost": 4.8}), ("D", "E", {"cost": 0.05}), ("C", "E", {"cost": 0.1}),          
+                    ("E", "C", {"cost": 0.7}), ("E", "F", {"cost": 0.4}), ("E", "G", {"cost": 15.}),           
+                    ("F", "C", {"cost": 0.9}), ("F", "D", {"cost": 4.}),                       
+                    ])
+    attrs = {'B': {"x": -20., "y": 60.}, 'A': {"x": 28., "y":55.},
+            'C': {"x": -12., "y": 40.}, 'D': {"x": 40., "y":45.},
+            'E': {"x": 8., "y": 35.}, 'F': {"x": -8., "y":15.},    
+            'G': {"x": 21., "y":5.},    
+            }
+
+    for num, (k,v) in enumerate(attrs.items()):
+        attrs[k]={**v,
+                }  
+    nx.set_node_attributes(MG, attrs)
+
+    rng = np.random.default_rng(seed=42)
+    random_weight = list(rng.uniform(low=0, high=100, size=len(MG.edges)).round(0))
+    attrs={}
+    for num, edge in enumerate(MG.edges):
+        attrs[edge]={'weight': random_weight[num]}
+    nx.set_edge_attributes(MG, attrs)
+
+    print(validate(MG))
+
+    x = Algorithm(10, 10)
+    print(x.sequential_delta_gamma_stepping(MG, 300, 99999, "A", "G"))
+
+main()
