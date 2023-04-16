@@ -22,6 +22,22 @@ def get_route_edge_attributes(
     return attribute_values
 
 class Graph:
+    # ["A", "B", "C", "D", "E", "F", "G"]
+    # [1, 2, 3, 4, 5, 6, 7] # vertices are numbers from 1 to n
+    # neighbors (node: 1 to n) -> [(node, cost, weight), ...] 
+    '''
+    array or a vector ->
+    struct Neighbor {
+        int node;
+        double cost;
+        double weight;
+    };
+    
+    Graph G:
+        public:
+            vector<int> neighbors;
+            neighbor(int) -> vector<Neighbor>;
+    '''
     def __init__(self, MG):
         self.MG = MG
         self.nodes = {i+1: node for i, node in enumerate(MG.nodes)}
@@ -44,8 +60,12 @@ class Algorithm:
         self.Gamma = Gamma
 
     def relax(self, B, A, ali, i_prime, W, L):
+        '''
+        Relaxes an edge that we can now include in the CSP calculation
+        and updates paths accordingly
+        '''
         pi, c, w = ali
-        pi_new, c_new, w_new = pi + (i_prime[0],), c + i_prime[1], w + i_prime[2]
+        pi_new, c_new, w_new = pi + (i_prime[0],), c + i_prime[1], w + i_prime[2] # building on the path
 
         is_dominated=False
         for a in A[i_prime[0]]:
@@ -64,43 +84,62 @@ class Algorithm:
                 B[math.ceil[a[1] / L][math.ceil[a[2] / W]]].remove(a)
 
     def sequential_delta_gamma_stepping(self, MG, W, L, start, end):
+        # W is the constraint on weight and L is the constraint on cost
+        # we shouldn't use L (set it to max double) since it's not part of CSP
         G = Graph(MG)
         start = G.inv_nodes[start]
         end = G.inv_nodes[end]
-        A = defaultdict(set)
-        B = defaultdict(lambda: defaultdict(set))
+        A = defaultdict(set) # initialize from 1 to n
+        B = defaultdict(lambda: defaultdict(set)) # vector<vector<Hashset>> 
+        # array instead of vector
+        # main vector initialize from 0 to (L+1)/self.Delta, nested vector 0 to (W+1)/self.Gamma
 
+        '''
+        # this or a tuple of (LinkedList/vector<int>, float, float)
+        struct Path {
+            LinkedList<int> path; // list of all nodes in the path
+            float total_cost;
+            float total_weight;
+        } PATH_T;
+        '''
         A[1].add(((start,), 0, 0))
         B[1][1].add(((start,), 0, 0))
 
+        # Check if any bucket is non-empty (B[j][k] for all j, k)
         while any(B[j][k] for j in range(1, math.ceil(L/self.Delta) + 1) for k in range(1, math.ceil(W/self.Gamma) + 1)):
+            # Getting the minimum non-empty bucket (lexicographic min by j then k)
             j, k = min((j, k) for j in range(1, math.ceil(L/self.Delta) + 1) for k in range(1, math.ceil(W/self.Gamma) + 1) if B[j][k])
 
-            R = set()
+            R = set() # hashset
             while B[j][k]:
                 R |= B[j][k]
                 tmp = B[j][k]
                 B[j][k] = set()
 
                 for ali in tmp:
-                    i = ali[0][-1] # TODO
+                    i = ali[0][-1] # the last node in the path
                     for i_prime in G.neighbors(i):
                         if i_prime[1] < self.Delta and i_prime[2] < self.Gamma:
                             self.relax(B, A, ali, i_prime, W, L)
 
             for ali in R:
-                i = ali[0][-1] # TODO
+                i = ali[0][-1] # the last node in the path
                 for i_prime in G.neighbors(i):
                     if i_prime[1] >= self.Delta or i_prime[2] >= self.Gamma:
                         self.relax(B, A, ali, i_prime, W, L)
 
         if not A[end]:
+            # return struct path or tuple of (LinkedList<int>, double, double)
             return [], float('inf'), float('inf')
         else:
+            # something that is not valid or throw an exception
+            # return struct path or tuple of (null, -1, -1);
+            # return null
             return min(A[end], key=lambda x: x[1])
 
 
 def validate(MG):
+    # something like this in cpp or just do in python and compare the results
     shortest_paths_constrained = []
     for path in all_simple_paths(MG, "A", "G"):
         if sum(get_route_edge_attributes(MG, path, 'weight')) < 300:
