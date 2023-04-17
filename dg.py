@@ -55,89 +55,84 @@ class Graph:
             ret.append((neighbors[i], vals['cost'], vals['weight']))
         return ret
 
-class Algorithm:
-    def __init__(self, Delta, Gamma):
-        self.Delta = Delta
-        self.Gamma = Gamma
+def relax(B, A, ali, i_prime, W, L, Delta, Gamma):
+    '''
+    Relaxes an edge that we can now include in the CSP calculation
+    and updates paths accordingly
+    '''
+    pi, c, w = ali
+    pi_new, c_new, w_new = pi + (i_prime[0],), c + i_prime[1], w + i_prime[2] # building on the path
 
-    def relax(self, B, A, ali, i_prime, W, L):
-        '''
-        Relaxes an edge that we can now include in the CSP calculation
-        and updates paths accordingly
-        '''
-        pi, c, w = ali
-        pi_new, c_new, w_new = pi + (i_prime[0],), c + i_prime[1], w + i_prime[2] # building on the path
+    is_dominated=False
+    for a in A[i_prime[0]]:
+        if a[1] < c_new and a[2] <= w_new:
+            is_dominated = True
+            break
+            
+    if w_new <= W and c_new <= L and not is_dominated:
+        A[i_prime[0]].add((pi_new, c_new, w_new))
+        B[math.ceil(c_new / L)][math.ceil(w_new / W)].add((pi_new, c_new, w_new))
 
-        is_dominated=False
-        for a in A[i_prime[0]]:
-            if a[1] < c_new and a[2] <= w_new:
-                is_dominated = True
-                break
-                
-        if w_new <= W and c_new <= L and not is_dominated:
-            A[i_prime[0]].add((pi_new, c_new, w_new))
-            B[math.ceil(c_new / L)][math.ceil(w_new / W)].add((pi_new, c_new, w_new))
+    
+    for a in A[i_prime[0]]:
+        if c_new < a[1] and w_new <= a[2]:
+            A[i_prime[0]].remove(a)
+            B[math.ceil[a[1] / L][math.ceil[a[2] / W]]].remove(a)
 
-        
-        for a in A[i_prime[0]]:
-            if c_new < a[1] and w_new <= a[2]:
-                A[i_prime[0]].remove(a)
-                B[math.ceil[a[1] / L][math.ceil[a[2] / W]]].remove(a)
+def sequential_delta_gamma_stepping(G, W, L, start, end, Delta, Gamma):
+    # W is the constraint on weight and L is the constraint on cost
+    # we shouldn't use L (set it to max double) since it's not part of CSP
+    # nodes will be represented as [1, n] so we don't need an inv_nodes and nodes
+    start = G.inv_nodes[start]
+    end = G.inv_nodes[end]
+    A = defaultdict(set) # initialize from 1 to n
+    B = defaultdict(lambda: defaultdict(set)) # vector<vector<Hashset>> 
+    # array instead of vector
+    # main vector initialize from 0 to (L+1)/self.Delta, nested vector 0 to (W+1)/self.Gamma
 
-    def sequential_delta_gamma_stepping(self, MG, W, L, start, end):
-        # W is the constraint on weight and L is the constraint on cost
-        # we shouldn't use L (set it to max double) since it's not part of CSP
-        G = Graph(MG) # this will be done outside of the algorithm and pass in G equivalent in cpp
-        # nodes will be represented as [1, n] so we don't need an inv_nodes and nodes
-        start = G.inv_nodes[start]
-        end = G.inv_nodes[end]
-        A = defaultdict(set) # initialize from 1 to n
-        B = defaultdict(lambda: defaultdict(set)) # vector<vector<Hashset>> 
-        # array instead of vector
-        # main vector initialize from 0 to (L+1)/self.Delta, nested vector 0 to (W+1)/self.Gamma
+    '''
+    # this or a tuple of (LinkedList/vector<int>, double, double)
+    struct Path {
+        LinkedList<int> path; // list of all nodes in the path
+        double total_cost;
+    x = Algorithm(10, 10)
+        double total_weight;
+    } PATH_T;
+    '''
+    A[1].add(((start,), 0, 0))
+    B[1][1].add(((start,), 0, 0))
 
-        '''
-        # this or a tuple of (LinkedList/vector<int>, double, double)
-        struct Path {
-            LinkedList<int> path; // list of all nodes in the path
-            double total_cost;
-            double total_weight;
-        } PATH_T;
-        '''
-        A[1].add(((start,), 0, 0))
-        B[1][1].add(((start,), 0, 0))
+    # Check if any bucket is non-empty (B[j][k] for all j, k)
+    while any(B[j][k] for j in range(1, math.ceil(L/Delta) + 1) for k in range(1, math.ceil(W/Gamma) + 1)):
+        # Getting the minimum non-empty bucket (lexicographic min by j then k)
+        j, k = min((j, k) for j in range(1, math.ceil(L/Delta) + 1) for k in range(1, math.ceil(W/Gamma) + 1) if B[j][k])
 
-        # Check if any bucket is non-empty (B[j][k] for all j, k)
-        while any(B[j][k] for j in range(1, math.ceil(L/self.Delta) + 1) for k in range(1, math.ceil(W/self.Gamma) + 1)):
-            # Getting the minimum non-empty bucket (lexicographic min by j then k)
-            j, k = min((j, k) for j in range(1, math.ceil(L/self.Delta) + 1) for k in range(1, math.ceil(W/self.Gamma) + 1) if B[j][k])
+        R = set() # hashset
+        while B[j][k]:
+            R |= B[j][k]
+            tmp = B[j][k]
+            B[j][k] = set()
 
-            R = set() # hashset
-            while B[j][k]:
-                R |= B[j][k]
-                tmp = B[j][k]
-                B[j][k] = set()
-
-                for ali in tmp:
-                    i = ali[0][-1] # the last node in the path
-                    for i_prime in G.neighbors(i):
-                        if i_prime[1] < self.Delta and i_prime[2] < self.Gamma:
-                            self.relax(B, A, ali, i_prime, W, L)
-
-            for ali in R:
+            for ali in tmp:
                 i = ali[0][-1] # the last node in the path
                 for i_prime in G.neighbors(i):
-                    if i_prime[1] >= self.Delta or i_prime[2] >= self.Gamma:
-                        self.relax(B, A, ali, i_prime, W, L)
+                    if i_prime[1] < Delta and i_prime[2] < Gamma:
+                        relax(B, A, ali, i_prime, W, L, Delta, Gamma)
 
-        if not A[end]:
-            # return struct path or tuple of (LinkedList<int>, double, double)
-            return [], float('inf'), float('inf')
-        else:
-            # something that is not valid or throw an exception
-            # return struct path or tuple of (null, -1, -1);
-            # return null
-            return min(A[end], key=lambda x: x[1])
+        for ali in R:
+            i = ali[0][-1] # the last node in the path
+            for i_prime in G.neighbors(i):
+                if i_prime[1] >= Delta or i_prime[2] >= Gamma:
+                    relax(B, A, ali, i_prime, W, L, Delta, Gamma)
+
+    if not A[end]:
+        # return struct path or tuple of (LinkedList<int>, double, double)
+        return [], float('inf'), float('inf')
+    else:
+        # something that is not valid or throw an exception
+        # return struct path or tuple of (null, -1, -1);
+        # return null
+        return min(A[end], key=lambda x: x[1])
 
 
 def validate(MG):
@@ -185,7 +180,7 @@ def main():
 
     print(validate(MG))
 
-    x = Algorithm(10, 10)
-    print(x.sequential_delta_gamma_stepping(MG, 300, 99999, "A", "G"))
+    G = Graph(MG)
+    print(sequential_delta_gamma_stepping(G, 300, 99999, "A", "G", 10, 10))
 
 main()
