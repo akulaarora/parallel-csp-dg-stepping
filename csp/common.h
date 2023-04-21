@@ -12,6 +12,13 @@ typedef struct Neighbor {
     double weight;
 } Neighbor_t;
 
+typedef struct Edge {
+    int src;
+    int dest;
+    double cost;
+    double weight;
+} Edge_t;
+
 typedef struct Path {
     std::vector<int> path; // list of all nodes in the path
     double total_cost;
