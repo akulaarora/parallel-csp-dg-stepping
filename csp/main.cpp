@@ -6,12 +6,11 @@
 #include <iostream>
 #include <limits>
 #include <random>
-#include <unordered_set>
-#include <vector>
-#include <time.h>
-#include <string>
 #include <sstream>
+#include <string>
+#include <time.h>
 #include <unordered_map>
+#include <vector>
 
 void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, double L,
            double Delta, double Gamma) {
@@ -132,10 +131,12 @@ int main(int argc char* argv[]) {
     input.close();
 
     double low = 0;
-	double high = 100;
-	const long max_rand = 1000000L;
+    double high = 100;
+    const long max_rand = 1000000L;
     srandom(time(NULL));
     std::vector<Edge_t> edges;
+    int num_nodes;
+    int num_edges;
 
     for (int i = 0; i != lines.size(); ++i) {
         std::istringstream stream(lines[i]);
@@ -146,22 +147,27 @@ int main(int argc char* argv[]) {
             temp.push_back(curr);
         }
 
-        double cost = low + (high-low) * (random()%max_rand) / max_rand;
-		double weight = low + (high-low) * (random()%max_rand) / max_rand;
+        if (i == 0) {
+            num_nodes = std::stoi(temp[0]);
+            num_edges = std::stoi(temp[1]);
+        } else {
+            double cost = low + (high - low) * (random() % max_rand) / max_rand;
+            double weight = low + (high - low) * (random() % max_rand) / max_rand;
 
-        Edge_t edge = {};
-        edge.src = std::stoi(temp[0]);
-        edge.dest = std::stoi(temp[1]);
-        edge.cost = cost;
-        edge.weight = weight;
-        edges.push_back(edge);
+            Edge_t edge = {};
+            edge.src = std::stoi(temp[0]);
+            edge.dest = std::stoi(temp[1]);
+            edge.cost = cost;
+            edge.weight = weight;
+            edges.push_back(edge);
+        }
     }
 
     std::cout << edges.size() << "\n";
-    std::unordered_map<int, std::vector<Neighbor_t> > neighbors;
+    std::unordered_map<int, std::vector<Neighbor_t>> neighbors;
 
     for (int i = 0; i != edges.size(); i++) {
-        if(neighbors.find(edges[i].src) == neighbors.end()) {
+        if (neighbors.find(edges[i].src) == neighbors.end()) {
             neighbors[edges[i].src] = std::vector<Neighbor_t>();
         }
         Neighbor_t neighbor = {};
