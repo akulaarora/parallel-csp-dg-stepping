@@ -75,16 +75,6 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, 
             }
         }
 
-        // for (int j = 1; j <= std::ceil(L / Delta); ++j) {
-        //     for (int k = 1; k <= std::ceil(W / Gamma); ++k) {
-        //         if (!B[j][k].empty() &&
-        //             (min_j == -1 || min_k == -1 || (j < min_j) || (j == min_j && k < min_k))) {
-        //             min_j = j;
-        //             min_k = k;
-        //         }
-        //     }
-        // }
-
         if (min_j == -1 && min_k == -1) {
             break;
         }
@@ -190,9 +180,15 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Sequential Delta Gamma Stepping\n";
     // We don't want to add L constraint since it's not part of CSP
-    Path_t result = sequential_delta_gamma_stepping(graph, 100, std::numeric_limits<double>::max(), 0, 1, 1, 1);
-    std::cout << result.total_cost << std::endl;
-    std::cout << result.total_weight << std::endl;
+    Path_t result = sequential_delta_gamma_stepping(graph, 9999, std::numeric_limits<double>::max(), 0, 3, 1, 1);
+    std::cout << "Cost: " << result.total_cost << std::endl;
+    std::cout << "Weight: " << result.total_weight << std::endl;
+
+    // Print path
+    for (const auto& node : result.path) {
+        std::cout << node << " ";
+    }
+    std::cout << " " << std::endl;
 
     return 1;
 }
