@@ -2,6 +2,7 @@ import math
 from collections import defaultdict
 import numpy as np
 import networkx as nx
+import sys
 from networkx.algorithms.simple_paths import all_simple_paths
 
 def get_route_edge_attributes(
@@ -138,8 +139,8 @@ def sequential_delta_gamma_stepping(G, W, L, start, end, Delta, Gamma):
 def validate(MG):
     # something like this in cpp or just do in python and compare the results
     shortest_paths_constrained = []
-    for path in all_simple_paths(MG, "A", "G"):
-        if sum(get_route_edge_attributes(MG, path, 'weight')) < 300:
+    for path in all_simple_paths(MG, "1", "64"):
+        if sum(get_route_edge_attributes(MG, path, 'weight')) < 500:
             path_cost = sum(get_route_edge_attributes(MG, path, 'cost'))
             result = (path, path_cost)
             if not shortest_paths_constrained:
@@ -152,35 +153,47 @@ def validate(MG):
     return shortest_paths_constrained
 
 def main():
+    input_file = sys.argv[1]
+    lines = []
+
+    with open(input_file) as file:
+        for line in file:
+            lines.append(line.rstrip())
+
     # 1. Define test network 
     MG = nx.MultiDiGraph()
-    MG.add_edges_from([("B", "A", {"cost": 0.8}), ("A", "B", {"cost": 1.}), ("D", "G", {"cost": 3.5}),
-                    ("B", "D", {"cost": 20.8}), ("A", "C", {"cost": 9.7}), ("D", "C", {"cost": 0.3}),
-                    ("B", "E", {"cost": 4.8}), ("D", "E", {"cost": 0.05}), ("C", "E", {"cost": 0.1}),          
-                    ("E", "C", {"cost": 0.7}), ("E", "F", {"cost": 0.4}), ("E", "G", {"cost": 15.}),           
-                    ("F", "C", {"cost": 0.9}), ("F", "D", {"cost": 4.}),                       
-                    ])
-    attrs = {'B': {"x": -20., "y": 60.}, 'A': {"x": 28., "y":55.},
-            'C': {"x": -12., "y": 40.}, 'D': {"x": 40., "y":45.},
-            'E': {"x": 8., "y": 35.}, 'F': {"x": -8., "y":15.},    
-            'G': {"x": 21., "y":5.},    
-            }
+    for item in lines:
+        edge = list(item.split())
+        if len(edge) > 2:
+            MG.add_edge(edge[0], edge[1], cost=float(edge[2]), weight=float(edge[3]))
 
-    for num, (k,v) in enumerate(attrs.items()):
-        attrs[k]={**v,
-                }  
-    nx.set_node_attributes(MG, attrs)
+    # MG.add_edges_from([("B", "A", {"cost": 0.8}), ("A", "B", {"cost": 1.}), ("D", "G", {"cost": 3.5}),
+    #                 ("B", "D", {"cost": 20.8}), ("A", "C", {"cost": 9.7}), ("D", "C", {"cost": 0.3}),
+    #                 ("B", "E", {"cost": 4.8}), ("D", "E", {"cost": 0.05}), ("C", "E", {"cost": 0.1}),          
+    #                 ("E", "C", {"cost": 0.7}), ("E", "F", {"cost": 0.4}), ("E", "G", {"cost": 15.}),           
+    #                 ("F", "C", {"cost": 0.9}), ("F", "D", {"cost": 4.}),                       
+    #                 ])
+    # attrs = {'B': {"x": -20., "y": 60.}, 'A': {"x": 28., "y":55.},
+    #         'C': {"x": -12., "y": 40.}, 'D': {"x": 40., "y":45.},
+    #         'E': {"x": 8., "y": 35.}, 'F': {"x": -8., "y":15.},    
+    #         'G': {"x": 21., "y":5.},    
+    #         }
 
-    rng = np.random.default_rng(seed=42)
-    random_weight = list(rng.uniform(low=0, high=100, size=len(MG.edges)).round(0))
-    attrs={}
-    for num, edge in enumerate(MG.edges):
-        attrs[edge]={'weight': random_weight[num]}
-    nx.set_edge_attributes(MG, attrs)
+    # for num, (k,v) in enumerate(attrs.items()):
+    #     attrs[k]={**v,
+    #             }  
+    # nx.set_node_attributes(MG, attrs)
+
+    # rng = np.random.default_rng(seed=42)
+    # random_weight = list(rng.uniform(low=0, high=100, size=len(MG.edges)).round(0))
+    # attrs={}
+    # for num, edge in enumerate(MG.edges):
+    #     attrs[edge]={'weight': random_weight[num]}
+    # nx.set_edge_attributes(MG, attrs)
 
     print(validate(MG))
 
-    G = Graph(MG)
-    print(sequential_delta_gamma_stepping(G, 300, 99999, "A", "G", 10, 10))
+    # G = Graph(MG)
+    # print(sequential_delta_gamma_stepping(G, 300, 99999, "A", "G", 10, 10))
 
 main()
