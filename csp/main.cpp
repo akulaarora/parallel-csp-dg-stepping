@@ -1,4 +1,3 @@
-#include "common.h"
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -11,6 +10,9 @@
 #include <time.h>
 #include <unordered_map>
 #include <vector>
+
+#include "common.h"
+#include "graph.h"
 
 void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, double L,
            double Delta, double Gamma) {
@@ -114,7 +116,7 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, 
     }
 }
 
-int main(int argc char* argv[]) {
+int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Missing input file!\n";
         return EXIT_FAILURE;
@@ -163,23 +165,18 @@ int main(int argc char* argv[]) {
         }
     }
 
-    std::cout << edges.size() << "\n";
-    std::unordered_map<int, std::vector<Neighbor_t>> neighbors;
+    // std::cout << edges.size() << "\n";
+    
+    Graph graph(num_nodes, edges);
 
-    for (int i = 0; i != edges.size(); i++) {
-        if (neighbors.find(edges[i].src) == neighbors.end()) {
-            neighbors[edges[i].src] = std::vector<Neighbor_t>();
-        }
-        Neighbor_t neighbor = {};
-        neighbor.node = edges[i].dest;
-        neighbor.cost = edges[i].cost;
-        neighbor.weight = edges[i].weight;
-        neighbors[edges[i].src].push_back(neighbor);
-    }
-
-    // for (auto& it : neighbors) {
-    //     std::cout << it.first << "\n";
+    // std::vector<Neighbor_t> node_0_neighbors = graph.neighbor(0);
+    // for (const auto& neighbor : node_0_neighbors) {
+    //     std::cout << "Node 0 is connected to node " << neighbor.node << " with cost " << neighbor.cost << " and weight " << neighbor.weight << "\n";
     // }
+
+    std::cout << "Sequential Delta Gamma Stepping\n";
+    // We don't want to add L constraint since it's not part of CSP
+    sequential_delta_gamma_stepping(graph, 100, std::numeric_limits<double>::max(), 0, 1, 1, 1);
 
     return 1;
 }

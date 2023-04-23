@@ -25,12 +25,6 @@ typedef struct Path {
     double total_weight;
 } Path_t;
 
-class Graph {
-    public:
-        int neighbors;
-        std::vector<Neighbor_t> neighbor(int node);
-};
-
 struct PathHash {
     size_t operator()(const Path_t& p) const {
         std::vector<int> v = p.path;
@@ -52,6 +46,5 @@ struct PathEqual {
 using PathSet = std::unordered_set<Path_t, PathHash, PathEqual>;
 using Bucket2D = std::unordered_map<int, PathSet>;
 using Bucket3D = std::unordered_map<int, Bucket2D>;
-
 
 #endif
