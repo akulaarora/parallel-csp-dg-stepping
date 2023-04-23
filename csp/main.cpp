@@ -32,14 +32,14 @@ void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, d
 
     if (new_path.total_weight <= W && new_path.total_cost <= L && !is_dominated) {
         A[i_prime.node].insert(new_path);
-        B[std::ceil(new_path.total_cost / L)][std::ceil(new_path.total_weight / W)].insert(
+        B[std::ceil(new_path.total_cost / Delta)][std::ceil(new_path.total_weight / Gamma)].insert(
             new_path);
     }
 
     for (const auto& a : A[i_prime.node]) {
         if (new_path.total_cost < a.total_cost && new_path.total_weight <= a.total_weight) {
             A[i_prime.node].erase(a);
-            B[std::ceil(a.total_cost / L)][std::ceil(a.total_weight / W)].erase(a);
+            B[std::ceil(a.total_cost / Delta)][std::ceil(a.total_weight / Gamma)].erase(a);
         }
     }
 }
@@ -158,6 +158,7 @@ int main(int argc, char* argv[]) {
             num_edges = std::stoi(temp[1]);
         } else {
             double cost = low + (high - low) * (random() % max_rand) / max_rand;
+            // std::cout << cost << std::endl;
             double weight = low + (high - low) * (random() % max_rand) / max_rand;
 
             Edge_t edge = {};

@@ -71,13 +71,13 @@ def relax(B, A, ali, i_prime, W, L, Delta, Gamma):
             
     if w_new <= W and c_new <= L and not is_dominated:
         A[i_prime[0]].add((pi_new, c_new, w_new))
-        B[math.ceil(c_new / L)][math.ceil(w_new / W)].add((pi_new, c_new, w_new))
+        B[math.ceil(c_new / Delta)][math.ceil(w_new / Gamma)].add((pi_new, c_new, w_new))
 
     
     for a in A[i_prime[0]]:
         if c_new < a[1] and w_new <= a[2]:
             A[i_prime[0]].remove(a)
-            B[math.ceil[a[1] / L][math.ceil[a[2] / W]]].remove(a)
+            B[math.ceil[a[1] / Delta][math.ceil[a[2] / Gamma]]].remove(a)
 
 def sequential_delta_gamma_stepping(G, W, L, start, end, Delta, Gamma):
     # W is the constraint on weight and L is the constraint on cost
