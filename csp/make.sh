@@ -7,7 +7,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 # cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 
-./serial ../out.txt
+./serial ../out_10_10.txt
 
 # cd /global/homes/a/aarora/CS267/hw2-1/build
 # ./serial -n 1000 -s 1 -o correct.parts.out
