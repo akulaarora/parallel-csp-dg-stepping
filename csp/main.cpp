@@ -144,6 +144,8 @@ int main(int argc, char* argv[]) {
     int num_nodes;
     int num_edges;
 
+    std::ofstream output("full.txt");
+
     for (int i = 0; i != lines.size(); ++i) {
         std::istringstream stream(lines[i]);
         std::vector<std::string> temp;
@@ -156,6 +158,7 @@ int main(int argc, char* argv[]) {
         if (i == 0) {
             num_nodes = std::stoi(temp[0]);
             num_edges = std::stoi(temp[1]);
+            output << lines[i] << "\n";
         } else {
             double cost = low + (high - low) * (random() % max_rand) / max_rand;
             // std::cout << cost << std::endl;
@@ -167,8 +170,12 @@ int main(int argc, char* argv[]) {
             edge.cost = cost;
             edge.weight = weight;
             edges.push_back(edge);
+
+            output << lines[i] << "\t" << cost << "\t" << weight << "\n";
         }
     }
+
+    output.close();
 
     // std::cout << edges.size() << "\n";
     
@@ -181,15 +188,21 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Sequential Delta Gamma Stepping\n";
     // We don't want to add L constraint since it's not part of CSP
-    Path_t result = sequential_delta_gamma_stepping(graph, 9999, std::numeric_limits<double>::max(), 0, 3, 1, 1);
+    auto start = std::chrono::high_resolution_clock::now();
+    Path_t result = sequential_delta_gamma_stepping(graph, 9999, std::numeric_limits<double>::max(), 0, 500, 1, 1);
+    auto end = std::chrono::high_resolution_clock::now();
     std::cout << "Cost: " << result.total_cost << std::endl;
     std::cout << "Weight: " << result.total_weight << std::endl;
+
 
     // Print path
     for (const auto& node : result.path) {
         std::cout << node << " ";
     }
     std::cout << " " << std::endl;
+
+    std::chrono::duration<double> total = end - start;
+    std::cout << "Runtime: " << total.count() << std::endl;
 
     return 1;
 }
