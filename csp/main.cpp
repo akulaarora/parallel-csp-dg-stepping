@@ -36,10 +36,14 @@ void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, d
             new_path);
     }
 
-    for (const auto& a : A[i_prime.node]) {
+    auto it = A[i_prime.node].begin();
+    while (it != A[i_prime.node].end()) {
+        const auto& a = *it;
         if (new_path.total_cost < a.total_cost && new_path.total_weight <= a.total_weight) {
-            A[i_prime.node].erase(a);
             B[std::ceil(a.total_cost / Delta)][std::ceil(a.total_weight / Gamma)].erase(a);
+            it = A[i_prime.node].erase(it);
+        } else {
+            ++it;
         }
     }
 }
@@ -58,6 +62,7 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, 
     B[1][1].insert(initial_path);
 
     while (true) {
+        // std::cout << "Run" << std::endl;
         int min_j = -1;
         int min_k = -1;
         // std::cout << min_j << std::endl;
@@ -189,7 +194,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Sequential Delta Gamma Stepping\n";
     // We don't want to add L constraint since it's not part of CSP
     auto start = std::chrono::high_resolution_clock::now();
-    Path_t result = sequential_delta_gamma_stepping(graph, 9999, std::numeric_limits<double>::max(), 0, 500, 1, 1);
+    Path_t result = sequential_delta_gamma_stepping(graph, 9999, std::numeric_limits<double>::max(), 0, 3, 100, 100);
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << "Cost: " << result.total_cost << std::endl;
     std::cout << "Weight: " << result.total_weight << std::endl;
