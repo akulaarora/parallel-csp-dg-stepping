@@ -47,4 +47,17 @@ using PathSet = std::unordered_set<Path_t, PathHash, PathEqual>;
 using Bucket2D = std::unordered_map<int, PathSet>;
 using Bucket3D = std::unordered_map<int, Bucket2D>;
 
+class Graph {
+    private:
+        std::unordered_map<int, std::vector<Neighbor_t>> neighbors;
+    public:
+        Graph(int num_nodes, const std::vector<Edge_t>& edges);
+        int total_nodes;
+        std::vector<Neighbor_t> neighbor(int node);
+};
+
+void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, double L, double Delta, double Gamma);
+Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, int end, double Delta, double Gamma);
+
+
 #endif

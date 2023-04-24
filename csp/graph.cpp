@@ -1,19 +1,7 @@
-#ifndef __GRAPH_H__
-#define __GRAPH_H__
-
 #include <unordered_map>
 #include <vector>
 
 #include "common.h"
-
-class Graph {
-    private:
-        std::unordered_map<int, std::vector<Neighbor_t>> neighbors;
-    public:
-        Graph(int num_nodes, const std::vector<Edge_t>& edges);
-        int total_nodes;
-        std::vector<Neighbor_t> neighbor(int node);
-};
 
 Graph::Graph(int num_nodes, const std::vector<Edge_t>& edges) {
     total_nodes = num_nodes;
@@ -36,5 +24,3 @@ std::vector<Neighbor_t> Graph::neighbor(int node) {
         return std::vector<Neighbor_t>();
     }
 }
-
-#endif
