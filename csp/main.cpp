@@ -22,7 +22,7 @@ void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, d
     new_path.total_cost = ali.total_cost + i_prime.cost;
     new_path.total_weight = ali.total_weight + i_prime.weight;
 
-    bool is_dominated = false;
+    bool is_dominated = false; // checks if dominated by any path in A[i']
     for (const auto& a : A[i_prime.node]) {
         if (a.total_cost < new_path.total_cost && a.total_weight <= new_path.total_weight) {
             is_dominated = true;
@@ -204,5 +204,5 @@ int main(int argc, char* argv[]) {
     std::chrono::duration<double> total = end - start;
     std::cout << "Runtime: " << total.count() << std::endl;
 
-    return 1;
+    return 0;
 }
