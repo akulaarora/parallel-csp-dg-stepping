@@ -15,25 +15,11 @@
 
 void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, double L,
            double Delta, double Gamma) {
-#ifdef DEBUG
-    std::cout << "RELAXING STARTS" << std::endl;
-#endif
-
     Path_t new_path;
     new_path.path = ali.path;
     new_path.path.push_back(i_prime.node);
     new_path.total_cost = ali.total_cost + i_prime.cost;
     new_path.total_weight = ali.total_weight + i_prime.weight;
-
-#ifdef DEBUG
-    std::cout << "New Path: ";
-    for (const auto& node : new_path.path) {
-        std::cout << node << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "New Path Cost: " << new_path.total_cost << std::endl;
-    std::cout << "New Path Weight: " << new_path.total_weight << std::endl;
-#endif
 
     bool is_dominated = false; // checks if dominated by any path in A[i']
     for (const auto& a : A[i_prime.node]) {
@@ -43,20 +29,8 @@ void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, d
         }
     }
     
-#ifdef DEBUG
-    std::cout << "is_dominated: " << is_dominated << std::endl;
-#endif
-
     if (new_path.total_weight <= W && new_path.total_cost <= L && !is_dominated) {
-#ifdef DEBUG
-        std::cout << "Inserting into A and B" << std::endl;
-#endif
-
         A[i_prime.node].insert(new_path);
-#ifdef DEBUG
-        std::cout << std::ceil(new_path.total_cost / Delta) << std::endl;
-        std::cout << std::ceil(new_path.total_weight / Gamma) << std::endl;
-#endif
         B[std::ceil(new_path.total_cost / Delta)][std::ceil(new_path.total_weight / Gamma)].insert(
             new_path);
     }
@@ -65,15 +39,6 @@ void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, d
     while (it != A[i_prime.node].end()) {
         const auto& a = *it;
         if (new_path.total_cost < a.total_cost && new_path.total_weight <= a.total_weight) {
-#ifdef DEBUG
-            std::cout << "Erasing Path from A[i_prime.node]: ";
-            for (const auto& node : a.path) {
-                std::cout << node << " ";
-            }
-            std::cout << std::endl;
-            std::cout << "Erased Path Cost: " << a.total_cost << std::endl;
-            std::cout << "Erased Path Weight: " << a.total_weight << std::endl;
-#endif
             B[std::ceil(a.total_cost / Delta)][std::ceil(a.total_weight / Gamma)].erase(a);
             it = A[i_prime.node].erase(it);
         } else {
@@ -116,10 +81,6 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, 
             break;
         }
 
-#ifdef DEBUG
-        std::cout << "Going thru bucket " << min_j << ", " << min_k << std::endl;
-#endif
-
         PathSet R;
         while (!B[min_j][min_k].empty()) {
             for (const auto& elem : B[min_j][min_k]) {
@@ -130,28 +91,11 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, 
             PathSet tmp(B[min_j][min_k]);
             B[min_j][min_k].clear();
 
-#ifdef DEBUG
-            std::cout << "R size: " << R.size() << std::endl;
-            std::cout << "tmp size: " << tmp.size() << std::endl;
-#endif
             for (const auto& ali : tmp) {
-#ifdef DEBUG
-                std::cout << "Path iterated over: ";
-                for (const auto& node : ali.path) {
-                    std::cout << node << " ";
-                }
-                std::cout << std::endl;
-#endif
 
                 int i = ali.path.back();
-#ifdef DEBUG
-                std::cout << "i--going thru neighbours: " << i << std::endl;
-#endif
                 for (const auto& i_prime : G.neighbor(i)) {
                     if (i_prime.cost < Delta && i_prime.weight < Gamma) {
-#ifdef DEBUG
-                        std::cout << "Relaxing " << i_prime.node << std::endl;
-#endif
                         relax(B, A, ali, i_prime, W, L, Delta, Gamma);
                     }
                 }
@@ -181,3 +125,4 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, 
         return min_path;
     }
 }
+
