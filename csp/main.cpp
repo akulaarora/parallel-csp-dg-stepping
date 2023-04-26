@@ -87,17 +87,28 @@ int main(int argc, char* argv[]) {
     std::cout << "Sequential Delta Gamma Stepping\n";
     // We don't want to add L constraint since it's not part of CSP
     auto start = std::chrono::high_resolution_clock::now();
-    Path_t result = sequential_delta_gamma_stepping(graph, 9999.0, std::numeric_limits<double>::max(), 0, 3, 9999.0, 9999.0);
+    
+    // #ifdef _OPENMP
+    // #pragma omp parallel default(shared)
+    // #endif
+    //     {
+            Path_t result = sequential_delta_gamma_stepping(graph, 9999.0, std::numeric_limits<double>::max(), 0, 3, 9999.0, 9999.0);
+
+    // #ifdef _OPENMP
+    // #pragma omp master
+    // #endif
+            // COMMENT OUT WHEN TIMING
+            std::cout << "Cost: " << result.total_cost << std::endl;
+            std::cout << "Weight: " << result.total_weight << std::endl;
+            // Print path
+            for (const auto& node : result.path) {
+                std::cout << node << " ";
+            }
+            std::cout << " " << std::endl;
+
+        // }
+
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Cost: " << result.total_cost << std::endl;
-    std::cout << "Weight: " << result.total_weight << std::endl;
-
-
-    // Print path
-    for (const auto& node : result.path) {
-        std::cout << node << " ";
-    }
-    std::cout << " " << std::endl;
 
     std::chrono::duration<double> total = end - start;
     std::cout << "Runtime: " << total.count() << std::endl;
