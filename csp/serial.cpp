@@ -13,8 +13,16 @@
 
 #include "common.h"
 
-void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, double L,
-           double Delta, double Gamma) {
+Bucket2D A;
+Bucket3D B;
+
+double W;
+double L;
+double Delta;
+double Gamma;
+
+
+void relax(Path_t ali, Neighbor_t i_prime) {
 #ifdef DEBUG
     std::cout << "RELAXING STARTS" << std::endl;
 #endif
@@ -82,10 +90,14 @@ void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, d
     }
 }
 
-Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, int end,
-                                       double Delta, double Gamma) {
-    Bucket2D A;
-    Bucket3D B;
+Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int start, int end,
+                                       double inp_Delta, double inp_Gamma) {
+    
+    // Globalize variables
+    W = inp_W;
+    L = inp_L;
+    Delta = inp_Delta;
+    Gamma = inp_Gamma;
 
     Path_t initial_path;
     initial_path.path = {start};
@@ -152,7 +164,7 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, 
 #ifdef DEBUG
                         std::cout << "Relaxing " << i_prime.node << std::endl;
 #endif
-                        relax(B, A, ali, i_prime, W, L, Delta, Gamma);
+                        relax(ali, i_prime);
                     }
                 }
             }
@@ -162,7 +174,7 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, 
             int i = ali.path.back();
             for (const auto& i_prime : G.neighbor(i)) {
                 if (i_prime.cost >= Delta || i_prime.weight >= Gamma) {
-                    relax(B, A, ali, i_prime, W, L, Delta, Gamma);
+                    relax(ali, i_prime);
                 }
             }
         }

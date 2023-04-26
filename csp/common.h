@@ -56,7 +56,7 @@ class Graph {
         std::vector<Neighbor_t> neighbor(int node);
 };
 
-void relax(Bucket3D& B, Bucket2D& A, Path_t ali, Neighbor_t i_prime, double W, double L, double Delta, double Gamma);
+void relax(Path_t ali, Neighbor_t i_prime);
 Path_t sequential_delta_gamma_stepping(Graph& G, double W, double L, int start, int end, double Delta, double Gamma);
 
 
