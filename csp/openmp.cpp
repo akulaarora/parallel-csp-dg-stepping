@@ -44,16 +44,23 @@ std::unordered_map<int, std::vector<RelaxRequest_t>> p_buffers; // Each processe
 // Rather than creating U, we assume a thread is responsible for all nodes where
 // node % total_threads == curr_thread_num. TODO we can play with this a bit.
 // Locks
-std::unordered_map<int, Lock_t> A_locks;
-std::unordered_map<int, std::unordered_map<int, Lock_t>> B_locks;
-std::unordered_map<int, std::unordered_map<int, std::unordered_map<int, Lock_t>>> p_B_locks;
-std::unordered_map<int, Lock_t> p_buffers_locks;
+std::unordered_map<int, Lock_t> A_locks; // Statically initialized
+std::unordered_map<int, std::unordered_map<int, Lock_t>> B_locks; // These are dynamically initialized
+std::unordered_map<int, std::unordered_map<int, std::unordered_map<int, Lock_t>>> p_B_locks;  // These are dynamically initialized
+std::unordered_map<int, Lock_t> p_buffers_locks; // Statically initialized
+Lock_t init_lock; // Lock for initializing. We need this to ensure two threads do not initialize the same lock.
 
 // HELPER FUNCTIONS
 void lock(Lock_t& l) {
     if (!l.is_init) {
-        omp_init_lock(&l.lock);
-        l.is_init = true;
+        omp_set_lock(&init_lock.lock);
+        // Double checking to ensure it wasn't initialized by another thread
+        // while we were checking/waiting for the lock
+        if (!l.is_init) {
+            omp_init_lock(&l.lock);
+            l.is_init = true;
+        }
+        omp_unset_lock(&init_lock.lock);
     }
     omp_set_lock(&l.lock);
 }
@@ -156,7 +163,20 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
 
     A[start].insert(initial_path);
     B[1][1].insert(initial_path);
-    // Don't need to initialize locks here because our logic will initialize first time it's locked
+
+    // Initialize static locks
+    omp_init_lock(&init_lock.lock);
+    init_lock.is_init = true;
+
+    for (int i = 0; i < G.total_nodes; ++i) {
+        omp_init_lock(&A_locks[i].lock);
+        A_locks[i].is_init = true;
+    }
+
+    for (int i = 0; i < num_threads; ++i) {
+        omp_init_lock(&p_buffers_locks[i].lock);
+        p_buffers_locks[i].is_init = true;
+    }
 
     while (true) {
         int min_j = -1;
