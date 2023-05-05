@@ -17,10 +17,11 @@ Graph::Graph(int num_nodes, const std::vector<Edge_t>& edges) {
     }
 }
 
-std::vector<Neighbor_t> Graph::neighbor(int node) {
+const std::vector<Neighbor_t>& Graph::neighbor(int node) {
+    static const std::vector<Neighbor_t> empty_list;
     if (neighbors.find(node) != neighbors.end()) {
         return neighbors[node];
     } else {
-        return std::vector<Neighbor_t>();
+        return empty_list;
     }
 }

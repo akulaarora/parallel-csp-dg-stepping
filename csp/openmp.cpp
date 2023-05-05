@@ -74,6 +74,7 @@ PathSet find_Bjk_x_Uq(int min_j, int min_k) {
     int my_thread_num = omp_get_thread_num();
     lock(B_locks[min_j][min_k]);
     PathSet ret;
+    // std::cout << "Thread: " << my_thread_num << " | Size of Bjk: " << B[min_j][min_k].size() << std::endl;
     for (const Path_t& elem : B[min_j][min_k]) {
         if ((elem.path.back() % num_threads == my_thread_num)
                 && (ret.count(elem) == 0)) {
@@ -153,9 +154,6 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
     Delta = inp_Delta;
     Gamma = inp_Gamma;
     
-    // TODO remove this. For debugging.
-    std::cout << "There are " << num_threads << " threads" << std::endl;
-
     Path_t initial_path;
     initial_path.path = {start};
     initial_path.total_cost = 0;
@@ -178,7 +176,11 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
         p_buffers_locks[i].is_init = true;
     }
 
+    // Line 3
     while (true) {
+        std::cout << "START OF WHILE LOOP" << std::endl;
+        std::cout << "-------------------------------------------" << std::endl;
+        // Line 4
         int min_j = -1;
         int min_k = -1;
 
@@ -198,20 +200,49 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
             break;
         }
 
+        /*
+         * IMPORTANT: There is an issue with the paper that lines 13-14 are 
+         * in the while loop conditioned on B[j][k] x Uq =/= 0 for processor q.
+         * Processor q may not have any elements in B[j][k] x Uq, but it may
+         * still have elements added to its buffer from other processors.
+         * TODO we should write out the correct paper algorithm.
+         * 
+         * My solution is to change line 7 to while B[j][k] is not empty
+         * (all processors run in this while loop), then proceed thru
+         * lines 8-12 if B[j][k] x Uq is not empty for processor q.
+         * All processors will then run lines 13-14.
+         * 
+         * Lines marked as "NEW" are the corrected algo lines.
+         */
 
-        PathSet R; // TODO this is temporary for heavy portion
-        #pragma omp parallel default(shared) private(R)
-        {
-            int my_thread_num = omp_get_thread_num();
-            // Line 7/8
-            PathSet tmp = find_Bjk_x_Uq(min_j, min_k);
-            while (!tmp.empty()) {
+        // Line 5-6
+        PathSet R; // This is Rq in the paper
+        std::cout << "PARALLEL SECT 1 START" << std::endl;
+        std::cout << "---------------" << std::endl;
+        // NEW Line 7
+        // TODO can try putting this inside pragma -- see if it's faster
+        while (!B[min_j][min_k].empty()) {
+            std::cout << "INNER WHILE START" << std::endl;
+            std::cout << "----" << std::endl;
+            #pragma omp parallel default(shared) private(R) num_threads(4)
+            {
+                int my_thread_num = omp_get_thread_num();
+                // std::cout << "Thread " << my_thread_num << " is running" << std::endl;
+                // Line 8
+                PathSet tmp = find_Bjk_x_Uq(min_j, min_k);
+
+                #pragma omp critical
+                {
+                std::cout << "Thread " << my_thread_num << " has tmp size " << tmp.size() << std::endl;
+                }
+                
                 // Line 9
                 for (const Path_t& elem : tmp) {
                     if (R.count(elem) == 0) {
                         R.insert(elem);
                     }
                 }
+
                 // TODO this could be optimized (put a barrier perhaps and clear B all at once)
                 // Line 10
                 lock(B_locks[min_j][min_k]);
@@ -219,7 +250,8 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
                     B[min_j][min_k].erase(elem);
                 }
                 unlock(B_locks[min_j][min_k]);
-
+            
+                // std::cout << "TESTING" << std::endl;
                 // Line 11-12
                 for (const Path_t& ali : tmp) {
                     int i = ali.path.back();
@@ -230,24 +262,51 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
                     }
                 }
 
-                // Line 13-14
+                // TODO there may be a way that's closer to the essence of the paper
+                // that allows for synchronous throwing and relaxing
+                #pragma omp barrier
+
+                // std::cout << "BREAK" << std::endl;
+                // // Line 13-14
                 lock(p_buffers_locks[my_thread_num]);
                 for (const RelaxRequest_t& req : p_buffers[my_thread_num]) {
+                    // std::cout << "i, i_prime: " << (*req.ali).path.back() << ", " << (*req.i_prime).node << std::endl;
                     relax(*req.ali, *req.i_prime);
                 }
+                // Clear the buffer
+                p_buffers[my_thread_num].clear();
                 unlock(p_buffers_locks[my_thread_num]);
+                // std::cout << "END TESTING" << std::endl;
             }
-
         }
 
-        // TODO WE HAVE NOT PARALLELIZED THIS YET
-        for (const auto& ali : R) {
-            int i = ali.path.back();
-            for (const Neighbor_t& i_prime : G.neighbor(i)) {
-                if (i_prime.cost >= Delta || i_prime.weight >= Gamma) {
-                    relax(ali, i_prime);
+        // std::cout << "HIT THIS POINT" << std::endl;
+        // std::cout << "R size: " << R.size() << std::endl;
+
+        std::cout << "PARALLEL SECT 2 START" << std::endl;
+        std::cout << "---------------" << std::endl;
+        #pragma omp parallel default(shared) private(R) num_threads(4)
+        {
+            int my_thread_num = omp_get_thread_num();
+            for (const Path_t& ali : R) {
+                int i = ali.path.back();
+                for (const Neighbor_t& i_prime : G.neighbor(i)) {
+                    if (i_prime.cost < Delta && i_prime.weight < Gamma) {
+                        throw_req(ali, i_prime);
+                    }
                 }
             }
+
+            #pragma omp barrier
+
+            // Line 13-14
+            lock(p_buffers_locks[my_thread_num]);
+            for (const RelaxRequest_t& req : p_buffers[my_thread_num]) {
+                relax(*req.ali, *req.i_prime);
+            }
+            // Clear the buffer
+            p_buffers[my_thread_num].clear();
+            unlock(p_buffers_locks[my_thread_num]);
         }
     }
 

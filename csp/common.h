@@ -53,7 +53,7 @@ class Graph {
     public:
         Graph(int num_nodes, const std::vector<Edge_t>& edges);
         int total_nodes;
-        std::vector<Neighbor_t> neighbor(int node);
+        const std::vector<Neighbor_t>& neighbor(int node);
 };
 
 void relax(Path_t ali, Neighbor_t i_prime);

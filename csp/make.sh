@@ -7,6 +7,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 # cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 
+# ./serial ../out_10_10.txt
 ./openmp ../out_10_10.txt
 
 # cd /global/homes/a/aarora/CS267/hw2-1/build
