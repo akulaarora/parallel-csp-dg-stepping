@@ -139,7 +139,7 @@ def sequential_delta_gamma_stepping(G, W, L, start, end, Delta, Gamma):
 def validate(MG):
     # something like this in cpp or just do in python and compare the results
     shortest_paths_constrained = []
-    for path in all_simple_paths(MG, "1", "64"):
+    for path in all_simple_paths(MG, "1", "2"):
         if sum(get_route_edge_attributes(MG, path, 'weight')) < 500:
             path_cost = sum(get_route_edge_attributes(MG, path, 'cost'))
             result = (path, path_cost)

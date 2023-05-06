@@ -41,6 +41,7 @@ int num_threads = omp_get_num_threads();
 // TODO buffer
 std::unordered_map<int, Bucket3D> p_B; // Each processes's individual buckets
 std::unordered_map<int, std::vector<RelaxRequest_t>> p_buffers; // Each processes's buffer
+std::unordered_map<int, PathSet> Rq; // This does not need locking since it is only used by one thread
 // Rather than creating U, we assume a thread is responsible for all nodes where
 // node % total_threads == curr_thread_num. TODO we can play with this a bit.
 // Locks
@@ -215,8 +216,12 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
          * Lines marked as "NEW" are the corrected algo lines.
          */
 
-        // Line 5-6
-        PathSet R; // This is Rq in the paper
+        // Line 5
+        // Line 6
+        for (auto& keyValuePair : Rq) {
+            keyValuePair.second.clear();
+        }
+
         std::cout << "PARALLEL SECT 1 START" << std::endl;
         std::cout << "---------------" << std::endl;
         // NEW Line 7
@@ -224,7 +229,7 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
         while (!B[min_j][min_k].empty()) {
             std::cout << "INNER WHILE START" << std::endl;
             std::cout << "----" << std::endl;
-            #pragma omp parallel default(shared) private(R) num_threads(4)
+            #pragma omp parallel default(shared) num_threads(4)
             {
                 int my_thread_num = omp_get_thread_num();
                 // std::cout << "Thread " << my_thread_num << " is running" << std::endl;
@@ -238,11 +243,10 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
                 
                 // Line 9
                 for (const Path_t& elem : tmp) {
-                    if (R.count(elem) == 0) {
-                        R.insert(elem);
+                    if (Rq[my_thread_num].count(elem) == 0) {
+                        Rq[my_thread_num].insert(elem);
                     }
                 }
-
                 // TODO this could be optimized (put a barrier perhaps and clear B all at once)
                 // Line 10
                 lock(B_locks[min_j][min_k]);
@@ -277,21 +281,23 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
                 p_buffers[my_thread_num].clear();
                 unlock(p_buffers_locks[my_thread_num]);
                 // std::cout << "END TESTING" << std::endl;
+
+                // TODO can clean up Rq in iterations to make heavy relaxation faster?
             }
         }
 
-        // std::cout << "HIT THIS POINT" << std::endl;
+        std::cout << "HIT THIS POINT" << std::endl;
         // std::cout << "R size: " << R.size() << std::endl;
 
         std::cout << "PARALLEL SECT 2 START" << std::endl;
         std::cout << "---------------" << std::endl;
-        #pragma omp parallel default(shared) private(R) num_threads(4)
+        #pragma omp parallel default(shared) num_threads(4)
         {
             int my_thread_num = omp_get_thread_num();
-            for (const Path_t& ali : R) {
+            for (const Path_t& ali : Rq[my_thread_num]) {
                 int i = ali.path.back();
                 for (const Neighbor_t& i_prime : G.neighbor(i)) {
-                    if (i_prime.cost < Delta && i_prime.weight < Gamma) {
+                    if (i_prime.cost >= Delta || i_prime.weight >= Gamma) {
                         throw_req(ali, i_prime);
                     }
                 }
@@ -302,6 +308,7 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
             // Line 13-14
             lock(p_buffers_locks[my_thread_num]);
             for (const RelaxRequest_t& req : p_buffers[my_thread_num]) {
+                std::cout << "i, i_prime: " << (*req.ali).path.back() << ", " << (*req.i_prime).node << std::endl;
                 relax(*req.ali, *req.i_prime);
             }
             // Clear the buffer

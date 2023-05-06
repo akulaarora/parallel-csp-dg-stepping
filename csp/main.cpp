@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
     // #pragma omp parallel default(shared)
     // #endif
     //     {
-            Path_t result = sequential_delta_gamma_stepping(graph, 9999.0, std::numeric_limits<double>::max(), 0, 3, 9999.0, 9999.0);
+            Path_t result = sequential_delta_gamma_stepping(graph, 9999.0, std::numeric_limits<double>::max(), 1, 2, 10, 10);
 
     // #ifdef _OPENMP
     // #pragma omp master
