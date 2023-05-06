@@ -41,7 +41,6 @@ int num_threads = omp_get_num_threads();
 // TODO buffer
 std::unordered_map<int, Bucket3D> p_B; // Each processes's individual buckets
 std::unordered_map<int, std::vector<RelaxRequest_t>> p_buffers; // Each processes's buffer
-std::unordered_map<int, PathSet> Rq; // This does not need locking since it is only used by one thread
 // Rather than creating U, we assume a thread is responsible for all nodes where
 // node % total_threads == curr_thread_num. TODO we can play with this a bit.
 // Locks
@@ -73,7 +72,7 @@ void unlock(Lock_t& l) {
 // Intersection of Bjk and Uq
 PathSet find_Bjk_x_Uq(int min_j, int min_k) {
     int my_thread_num = omp_get_thread_num();
-    lock(B_locks[min_j][min_k]);
+    // lock(B_locks[min_j][min_k]);
     PathSet ret;
     // std::cout << "Thread: " << my_thread_num << " | Size of Bjk: " << B[min_j][min_k].size() << std::endl;
     for (const Path_t& elem : B[min_j][min_k]) {
@@ -82,7 +81,7 @@ PathSet find_Bjk_x_Uq(int min_j, int min_k) {
             ret.insert(elem);
         }
     }
-    unlock(B_locks[min_j][min_k]);
+    // unlock(B_locks[min_j][min_k]);
     return ret;
 }
 
@@ -179,8 +178,8 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
 
     // Line 3
     while (true) {
-        std::cout << "START OF WHILE LOOP" << std::endl;
-        std::cout << "-------------------------------------------" << std::endl;
+        // std::cout << "START OF WHILE LOOP" << std::endl;
+        // std::cout << "-------------------------------------------" << std::endl;
         // Line 4
         int min_j = -1;
         int min_k = -1;
@@ -216,85 +215,89 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
          * Lines marked as "NEW" are the corrected algo lines.
          */
 
+        // std::cout << "PARALLEL SECT 1 START" << std::endl;
+        // std::cout << "---------------" << std::endl;
         // Line 5
-        // Line 6
-        for (auto& keyValuePair : Rq) {
-            keyValuePair.second.clear();
-        }
-
-        std::cout << "PARALLEL SECT 1 START" << std::endl;
-        std::cout << "---------------" << std::endl;
-        // NEW Line 7
-        // TODO can try putting this inside pragma -- see if it's faster
-        while (!B[min_j][min_k].empty()) {
-            std::cout << "INNER WHILE START" << std::endl;
-            std::cout << "----" << std::endl;
-            #pragma omp parallel default(shared) num_threads(4)
-            {
-                int my_thread_num = omp_get_thread_num();
-                // std::cout << "Thread " << my_thread_num << " is running" << std::endl;
-                // Line 8
-                PathSet tmp = find_Bjk_x_Uq(min_j, min_k);
-
-                #pragma omp critical
-                {
-                std::cout << "Thread " << my_thread_num << " has tmp size " << tmp.size() << std::endl;
-                }
-                
-                // Line 9
-                for (const Path_t& elem : tmp) {
-                    if (Rq[my_thread_num].count(elem) == 0) {
-                        Rq[my_thread_num].insert(elem);
-                    }
-                }
-                // TODO this could be optimized (put a barrier perhaps and clear B all at once)
-                // Line 10
-                lock(B_locks[min_j][min_k]);
-                for (const Path_t& elem : tmp) {
-                    B[min_j][min_k].erase(elem);
-                }
-                unlock(B_locks[min_j][min_k]);
-            
-                // std::cout << "TESTING" << std::endl;
-                // Line 11-12
-                for (const Path_t& ali : tmp) {
-                    int i = ali.path.back();
-                    for (const Neighbor_t& i_prime : G.neighbor(i)) {
-                        if (i_prime.cost < Delta && i_prime.weight < Gamma) {
-                            throw_req(ali, i_prime);
-                        }
-                    }
-                }
-
-                // TODO there may be a way that's closer to the essence of the paper
-                // that allows for synchronous throwing and relaxing
-                #pragma omp barrier
-
-                // std::cout << "BREAK" << std::endl;
-                // // Line 13-14
-                lock(p_buffers_locks[my_thread_num]);
-                for (const RelaxRequest_t& req : p_buffers[my_thread_num]) {
-                    // std::cout << "i, i_prime: " << (*req.ali).path.back() << ", " << (*req.i_prime).node << std::endl;
-                    relax(*req.ali, *req.i_prime);
-                }
-                // Clear the buffer
-                p_buffers[my_thread_num].clear();
-                unlock(p_buffers_locks[my_thread_num]);
-                // std::cout << "END TESTING" << std::endl;
-
-                // TODO can clean up Rq in iterations to make heavy relaxation faster?
-            }
-        }
-
-        std::cout << "HIT THIS POINT" << std::endl;
-        // std::cout << "R size: " << R.size() << std::endl;
-
-        std::cout << "PARALLEL SECT 2 START" << std::endl;
-        std::cout << "---------------" << std::endl;
         #pragma omp parallel default(shared) num_threads(4)
         {
+            // Line 6
+            PathSet R;
+
+            // NEW Line 7
+            while (!B[min_j][min_k].empty()) {
+                // std::cout << "INNER WHILE START" << std::endl;
+                // std::cout << "----" << std::endl;
+                    int my_thread_num = omp_get_thread_num();
+                    // std::cout << "Thread " << my_thread_num << " is running" << std::endl;
+                    // Line 8
+                    PathSet tmp = find_Bjk_x_Uq(min_j, min_k);
+
+
+                    // #pragma omp critical
+                    // {
+                    // std::cout << "Thread " << my_thread_num << " has tmp size " << tmp.size() << std::endl;
+                    // }
+                    
+                    // Line 9
+                    for (const Path_t& elem : tmp) {
+                        if (R.count(elem) == 0) {
+                            R.insert(elem);
+                        }
+                    }
+
+                    // TODO this could be optimized (put a barrier perhaps and clear B all at once)
+                    // Line 10
+                    // TODO see if we can get rid of this and add more synchronization (what paper describes)
+                    // NOTE: Removed locks in find_Bjk_x_Uq bc there's no modification of B while that runs
+                    // with this implementation
+                    #pragma omp barrier
+                    #pragma omp single
+                    {
+                        // No need for lock bc only one thread is here
+                        for (const Path_t& elem : tmp) {
+                            B[min_j][min_k].erase(elem);
+                        }
+                    }
+                    // lock(B_locks[min_j][min_k]);
+                    // for (const Path_t& elem : tmp) {
+                    //     B[min_j][min_k].erase(elem);
+                    // }
+                    // unlock(B_locks[min_j][min_k]);
+                
+                    // std::cout << "TESTING" << std::endl;
+                    // Line 11-12
+                    for (const Path_t& ali : tmp) {
+                        int i = ali.path.back();
+                        for (const Neighbor_t& i_prime : G.neighbor(i)) {
+                            if (i_prime.cost < Delta && i_prime.weight < Gamma) {
+                                throw_req(ali, i_prime);
+                            }
+                        }
+                    }
+
+                    // TODO there may be a way that's closer to the essence of the paper
+                    // that allows for synchronous throwing and relaxing
+                    // #pragma omp barrier
+
+                    // std::cout << "BREAK" << std::endl;
+                    // // Line 13-14
+                    lock(p_buffers_locks[my_thread_num]);
+                    for (const RelaxRequest_t& req : p_buffers[my_thread_num]) {
+                        // std::cout << "i, i_prime: " << (*req.ali).path.back() << ", " << (*req.i_prime).node << std::endl;
+                        relax(*req.ali, *req.i_prime);
+                    }
+                    // Clear the buffer
+                    p_buffers[my_thread_num].clear();
+                    unlock(p_buffers_locks[my_thread_num]);
+                    // std::cout << "END TESTING" << std::endl;
+            }
+
+            // std::cout << "HIT THIS POINT" << std::endl;
+
+            // std::cout << "PARALLEL SECT 2 START" << std::endl;
+            // std::cout << "---------------" << std::endl;
             int my_thread_num = omp_get_thread_num();
-            for (const Path_t& ali : Rq[my_thread_num]) {
+            for (const Path_t& ali : R) {
                 int i = ali.path.back();
                 for (const Neighbor_t& i_prime : G.neighbor(i)) {
                     if (i_prime.cost >= Delta || i_prime.weight >= Gamma) {
@@ -303,12 +306,11 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
                 }
             }
 
-            #pragma omp barrier
+            // #pragma omp barrier
 
             // Line 13-14
             lock(p_buffers_locks[my_thread_num]);
             for (const RelaxRequest_t& req : p_buffers[my_thread_num]) {
-                std::cout << "i, i_prime: " << (*req.ali).path.back() << ", " << (*req.i_prime).node << std::endl;
                 relax(*req.ali, *req.i_prime);
             }
             // Clear the buffer

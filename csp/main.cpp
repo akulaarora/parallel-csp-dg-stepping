@@ -94,34 +94,21 @@ int main(int argc, char* argv[]) {
     //     std::cout << "Node 0 is connected to node " << neighbor.node << " with cost " << neighbor.cost << " and weight " << neighbor.weight << "\n";
     // }
 
-    // std::vector<Neighbor_t> node_3_neighbors = graph.neighbor(3);
-    // for (const auto& neighbor : node_3_neighbors) {
-    //     std::cout << "Node 3 is connected to node " << neighbor.node << " with cost " << neighbor.cost << " and weight " << neighbor.weight << "\n";
-    // }
-
     std::cout << "Sequential Delta Gamma Stepping\n";
-    // We don't want to add L constraint since it's not part of CSP
+
     auto start = std::chrono::high_resolution_clock::now();
     
-    // #ifdef _OPENMP
-    // #pragma omp parallel default(shared)
-    // #endif
-    //     {
-            Path_t result = sequential_delta_gamma_stepping(graph, 9999.0, std::numeric_limits<double>::max(), 1, 2, 10, 10);
+    // We don't want to add L constraint since it's not part of CSP
+    Path_t result = sequential_delta_gamma_stepping(graph, 300, std::numeric_limits<double>::max(), 1, 2, 10, 10);
 
-    // #ifdef _OPENMP
-    // #pragma omp master
-    // #endif
-            // COMMENT OUT WHEN TIMING
-            std::cout << "Cost: " << result.total_cost << std::endl;
-            std::cout << "Weight: " << result.total_weight << std::endl;
-            // Print path
-            for (const auto& node : result.path) {
-                std::cout << node << " ";
-            }
-            std::cout << " " << std::endl;
-
-        // }
+    // COMMENT OUT WHEN TIMING
+    std::cout << "Cost: " << result.total_cost << std::endl;
+    std::cout << "Weight: " << result.total_weight << std::endl;
+    // Print path
+    for (const auto& node : result.path) {
+        std::cout << node << " ";
+    }
+    std::cout << " " << std::endl;
 
     auto end = std::chrono::high_resolution_clock::now();
 
