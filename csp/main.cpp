@@ -19,6 +19,14 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    bool weightsGiven = false;
+    if (argc == 3) {
+        std::string weights(argv[2]);
+        if (weights == "--nogen") {
+            weightsGiven = true;
+        }
+    }
+
     std::string input_file(argv[1]);
     std::ifstream input;
     std::vector<std::string> lines;
@@ -53,9 +61,18 @@ int main(int argc, char* argv[]) {
             num_edges = std::stoi(temp[1]);
             output << lines[i] << "\n";
         } else {
-            double cost = low + (high - low) * (random() % max_rand) / max_rand;
-            // std::cout << cost << std::endl;
-            double weight = low + (high - low) * (random() % max_rand) / max_rand;
+            double cost = 0.0;
+            double weight = 0.0;
+            if (!weightsGiven) {
+                cost = low + (high - low) * (random() % max_rand) / max_rand;
+                // std::cout << cost << std::endl;
+                weight = low + (high - low) * (random() % max_rand) / max_rand;
+                output << lines[i] << "\t" << cost << "\t" << weight << "\n";
+            } else {
+                cost = std::stod(temp[2]);
+                weight = std::stod(temp[3]);
+                output << lines[i] << "\n";
+            }
 
             Edge_t edge = {};
             edge.src = std::stoi(temp[0]);
@@ -63,8 +80,6 @@ int main(int argc, char* argv[]) {
             edge.cost = cost;
             edge.weight = weight;
             edges.push_back(edge);
-
-            output << lines[i] << "\t" << cost << "\t" << weight << "\n";
         }
     }
 
