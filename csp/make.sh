@@ -7,8 +7,13 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 # cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 
-./serial ../out_100_100_full.txt --nogen
-./openmp ../out_100_100_full.txt --nogen
+./serial ../out_full.txt --nogen
+# ./serial ../out_100_100_full.txt --nogen
+# Run this 100 times
+./openmp ../out_full.txt --nogen
+for i in {1..1000}; do
+    ./openmp ../out_100_100_full.txt --nogen
+done
 
 # cd /global/homes/a/aarora/CS267/hw2-1/build
 # ./serial -n 1000 -s 1 -o correct.parts.out
