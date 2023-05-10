@@ -101,6 +101,8 @@ int main(int argc, char* argv[]) {
     // We don't want to add L constraint since it's not part of CSP
     Path_t result = sequential_delta_gamma_stepping(graph, 300, std::numeric_limits<double>::max(), 1, 2, 10, 10);
 
+    auto end = std::chrono::high_resolution_clock::now();
+
     // COMMENT OUT WHEN TIMING
     std::cout << "Cost: " << result.total_cost << std::endl;
     std::cout << "Weight: " << result.total_weight << std::endl;
@@ -109,8 +111,6 @@ int main(int argc, char* argv[]) {
         std::cout << node << " ";
     }
     std::cout << " " << std::endl;
-
-    auto end = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> total = end - start;
     std::cout << "Runtime: " << total.count() << std::endl;

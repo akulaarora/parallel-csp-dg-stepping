@@ -37,7 +37,7 @@ double Delta;
 double Gamma;
 
 // Parallel data structures
-int num_threads = 4;
+int num_threads = 64;
 // TODO buffer
 std::unordered_map<int, std::vector<RelaxRequest_t>> p_buffers; // Each processes's buffer
 // Rather than creating U, we assume a thread is responsible for all nodes where
@@ -211,7 +211,7 @@ Path_t sequential_delta_gamma_stepping(Graph& G, double inp_W, double inp_L, int
          */
 
         // Line 5
-        #pragma omp parallel default(shared) num_threads(4)
+        #pragma omp parallel default(shared) num_threads(64)
         {
             // num_threads = omp_get_num_threads();
             int my_thread_num = omp_get_thread_num();
