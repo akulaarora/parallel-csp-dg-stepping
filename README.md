@@ -24,4 +24,4 @@ build off our work to continue to push the boundary of parallel graph algorithms
 
 dg.py provides a Python implementation of the serial algorithm.
 
-The csp folder provides a C++ implementation of the algorithm as well as a pparallel implementation.
+The csp folder provides a C++ implementation of the serial algorithm as well as a parallel implementation.
