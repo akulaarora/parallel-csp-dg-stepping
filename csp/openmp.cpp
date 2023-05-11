@@ -46,7 +46,7 @@ std::unordered_map<int, std::vector<RelaxRequest_t>> p_buffers; // Each processe
 // std::unordered_map<int, std::unordered_map<int, Lock_t>> B_locks; // These are dynamically initialized
 Lock_t B_lock;
 std::unordered_map<int, Lock_t> p_buffers_locks; // Statically initialized
-Lock_t init_lock; // Lock for initializing. We need this to ensure two threads do not initialize the same lock.
+// Lock_t init_lock; // Lock for initializing. We need this to ensure two threads do not initialize the same lock.
 
 // HELPER FUNCTIONS
 void lock(Lock_t& l) {
