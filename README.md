@@ -1,6 +1,6 @@
 # Parallelizing Constrained Shortest Path Using (∆, Γ)-Stepping Algorithm
 
-In this paper, we implement the first serial implementation and a shared-memory parallel implementations of
+In this paper, we implement the first serial andshared-memory parallel implementations of
 the (∆, Γ)-stepping algorithm to solve the NP-hard Constrained Shortest Path (CSP) problem. The
 CSP problem says that for a directed graph with non-negative costs and weights for all edges in the
 graph, find the shortest path (by cost) such that the total weight of the path is less than a given positive
